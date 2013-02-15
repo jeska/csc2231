@@ -6,5 +6,8 @@
     <string name="title_activity_main">Record Audio</string>
     <string name="press_to_start">Press to start recording</string>
     <string name="record_start">Start</string>
+    <string name="record_stop">Stop</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
 
 </resources>
