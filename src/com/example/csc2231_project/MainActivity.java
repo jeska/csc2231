@@ -2,11 +2,21 @@ package com.example.csc2231_project;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONArray;
+import org.json.JSONException;
 
 import android.app.Activity;
 import android.media.AudioFormat;
@@ -52,6 +62,13 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);        
         setContentView(R.layout.activity_main);
         
+        String connectInfo = pingServer();
+        try {
+			JSONArray infoArray = new JSONArray(connectInfo);
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         serverConnect();
                 
         id = "A2D4A2D4";
@@ -71,8 +88,43 @@ public class MainActivity extends Activity {
         return true;
     } */
     
+    private String pingServer() {
+
+    	StringBuilder builder = new StringBuilder();
+    	HttpClient client = new DefaultHttpClient();
+    	HttpGet get = new HttpGet(SERVER + "/connect");
+		
+    	try {
+    		HttpResponse response;
+			response = client.execute(get);
+    		StatusLine status = response.getStatusLine();
+    		int code = status.getStatusCode();
+    		if (code == 200) {
+    			HttpEntity entity = response.getEntity();
+    			InputStream content = entity.getContent();
+    			BufferedReader reader = new BufferedReader(new InputStreamReader(content));
+    			String line;
+    			while((line = reader.readLine()) != null) {
+    				builder.append(line);
+    			}
+    		} else {
+    			Log.e(TAG, "Error: could not get connect JSON");
+    		}
+
+		} catch (ClientProtocolException e) {
+			Log.e(TAG, "ClientProtocolException in serverConnect");
+			// e.printStackTrace();
+		} catch (IOException e) {
+			Log.e(TAG, "IOException in serverConnect");
+			// e.printStackTrace();
+		}
+    	
+    	return builder.toString();
+    }
+    
     private void serverConnect() {
-    	BufferedReader connectResponse;
+    	
+    	/* BufferedReader connectResponse;
     	PrintWriter connectWrite;
     	try {
     		connectSocket = new Socket(SERVER, CONNECT_PORT);
@@ -86,7 +138,7 @@ public class MainActivity extends Activity {
     		// connectResponse.close();
     		// connectWrite.close();
     		// connectSocket.close();
-    	}
+    	} */
     }
     
     private void prepare_recording() {
