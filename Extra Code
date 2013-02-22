@@ -1,0 +1,50 @@
+Junk extra code
+
+
+
+/* @Override
+public boolean onCreateOptionsMenu(Menu menu) {
+    getMenuInflater().inflate(R.menu.activity_main, menu);
+    return true;
+} */
+
+/*audio_recorder = new MediaRecorder();
+audio_recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+audio_recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+audio_recorder.setOutputFile(file_name);
+audio_recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);*/        	
+/*try {
+audio_recorder.prepare();
+} catch (IOException e) {
+Log.e(TAG, "failed on preparing mic");
+}*/
+
+// audio_recorder.start();
+
+
+// String file = set_file_name();
+// String file = Environment.getExternalStorageDirectory().getAbsolutePath() + "/csc2231/temp.raw";
+// Log.v(TAG, file);
+// FileOutputStream recording = null;
+
+// try {
+//	recording = new FileOutputStream(file);
+// } catch (FileNotFoundException e) {
+// 	Log.e(TAG, "File not found exception in write_audio");
+// 	e.printStackTrace();
+// }
+
+
+
+// try {
+	// recording.write(audio_data);
+	// Log.v(TAG, "Writing data");
+// } catch (IOException e) {
+// 	Log.e(TAG, "Error writing data in write_audio");
+// }
+// try {
+// 	recording.close();
+// } catch (IOException e) {
+// 	Log.e(TAG, "Error closing file in write_audio");
+// }
+// }
