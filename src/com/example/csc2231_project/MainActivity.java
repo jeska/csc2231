@@ -17,6 +17,7 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -36,13 +37,11 @@ public class MainActivity extends Activity {
 	/* Log tag */
 	private static final String TAG = "CSC2231";
 
-	/* Microphone information and recording variables
-	 * TODO: have this get information from server 
-	 * */
+	/* Microphone information and recording variables */
 	private static final int MIC = AudioSource.MIC;
-	private static final int SAMPLE_RATE = 44100;
-	private static final int CHANNEL = AudioFormat.CHANNEL_IN_MONO;
-	private static final int ENCODING = AudioFormat.ENCODING_PCM_16BIT;
+	private static int sampleRate;
+	private static int channel;
+	private static int encoding;
 	private AudioRecord audioRecorder = null;
 	private Thread recordThread = null;
 	private boolean currentlyRecording = false;
@@ -75,9 +74,6 @@ public class MainActivity extends Activity {
 
 		new ServerConnectTask().execute();
 
-		audioBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL, ENCODING);
-		sizeByte = getBytes(audioBufferSize);
-
 		txt = (TextView) findViewById(R.id.record_text);
 		recordButton = (ToggleButton) findViewById(R.id.record_button);
 		recordButton.setEnabled(false);
@@ -90,6 +86,33 @@ public class MainActivity extends Activity {
 				JSONObject connectInfo = new JSONObject(pingServer());
 				id = connectInfo.getLong("Sessid");
 				audioPort = connectInfo.getInt("Port");
+				
+				JSONObject audioInfo = connectInfo.getJSONObject("AudioInfo");
+				sampleRate = audioInfo.getInt("SampleRate");
+				
+				switch(audioInfo.getInt("BytesPerSample")) {
+					case 16:
+						encoding = AudioFormat.ENCODING_PCM_16BIT;
+						break;
+					case 8:
+						encoding = AudioFormat.ENCODING_PCM_8BIT;
+						break;
+					default:
+						encoding = AudioFormat.ENCODING_DEFAULT;
+						break;
+				}
+				
+				switch(audioInfo.getInt("Channels")) {
+					case 1:
+						channel = AudioFormat.CHANNEL_IN_MONO;
+						break;
+					case 2:
+						channel = AudioFormat.CHANNEL_IN_STEREO;
+						break;
+					default:
+						channel = AudioFormat.CHANNEL_IN_DEFAULT;
+						break;
+				}
 			} catch (NumberFormatException e) {
 				Log.e(TAG, "error: NumberFormatException");
 				e.printStackTrace();
@@ -104,6 +127,8 @@ public class MainActivity extends Activity {
 		@Override
 		protected void onPostExecute(Void result) {
 			idByte = getBytes(id);
+			audioBufferSize = AudioRecord.getMinBufferSize(sampleRate, channel, encoding);
+			sizeByte = getBytes(audioBufferSize);
 			packetData = new byte[8 + // idByte.length
 			                      8 + // timeByte.length
 			                      8 + // num samples in
@@ -152,7 +177,7 @@ public class MainActivity extends Activity {
 	}
 
 	private void prepare_recording() {
-		audioRecorder = new AudioRecord(MIC, SAMPLE_RATE, CHANNEL, ENCODING, audioBufferSize);
+		audioRecorder = new AudioRecord(MIC, sampleRate, channel, encoding, audioBufferSize);
 	}
 
 	// TODO: would be nice to pull some of this out into functions, like prepare_recording
@@ -160,7 +185,6 @@ public class MainActivity extends Activity {
 		if(recordButton.isChecked()) {
 			currentlyRecording = true;
 			prepare_recording();
-			idByte = getBytes(id);
 
 			recordThread = new Thread(new Runnable() {
 				@Override
