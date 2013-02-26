@@ -21,6 +21,6 @@
         android:layout_centerHorizontal="true"
         android:layout_marginTop="34dp"
         android:text="@string/on"
-        android:onClick="record_button_click" />
+        android:onClick="recordButtonClick" />
 
 </RelativeLayout>

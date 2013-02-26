@@ -48,3 +48,24 @@ Log.e(TAG, "failed on preparing mic");
 // 	Log.e(TAG, "Error closing file in write_audio");
 // }
 // }
+
+
+Old version of recording:
+
+	// private static Socket audioSocket = null;
+	// private static PrintWriter audioWrite;
+	
+	init in write_audio: 
+	// audioWrite = new PrintWriter(audioSocket.getOutputStream(), true);
+
+	// audioWrite.(packetData);
+	
+	Clean up:
+	// audioWrite.println("STOP");
+	// audioWrite.close();
+	
+	// try {
+	 	// audioDataOutput.close();
+	// } catch (IOException e) {
+	// 	e.printStackTrace();
+	// }
