@@ -17,7 +17,6 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -59,7 +58,7 @@ public class MainActivity extends Activity {
 	private static long id;
 	private static byte[] idByte;
 	private static byte[] timeByte;
-	private static long count;
+	private static long count = 0;
 	private static byte[] sizeByte;
 	private byte[] packetData;
 
@@ -126,15 +125,12 @@ public class MainActivity extends Activity {
 
 		@Override
 		protected void onPostExecute(Void result) {
-			idByte = getBytes(id);
 			audioBufferSize = AudioRecord.getMinBufferSize(sampleRate, channel, encoding);
-			sizeByte = getBytes(audioBufferSize);
 			packetData = new byte[8 + // idByte.length
 			                      8 + // timeByte.length
 			                      8 + // num samples in
 			                      4 + // size of audio buffer
 			                      audioBufferSize];
-			count = 231; // TODO: Not this!
 			recordButton.setEnabled(true);
 		}
 	}
@@ -183,6 +179,11 @@ public class MainActivity extends Activity {
 	// TODO: would be nice to pull some of this out into functions, like prepare_recording
 	public void recordButtonClick(View view) {
 		if(recordButton.isChecked()) {
+			idByte = getBytes(id);
+			sizeByte = getBytes(audioBufferSize);
+			System.arraycopy(idByte, 0, packetData, 0, idByte.length);
+			System.arraycopy(sizeByte, 0, packetData, 8 + 8 + 8, sizeByte.length);
+			
 			currentlyRecording = true;
 			prepare_recording();
 
@@ -224,39 +225,35 @@ public class MainActivity extends Activity {
 					read = audioRecorder.read(audio_data, 0, audioBufferSize);
 
 					if(read != AudioRecord.ERROR_INVALID_OPERATION) {
-						// TODO: This write and the sizeByte only need to happen once. Figure out a place to move this.
-						System.arraycopy(idByte, 0, packetData, 0, idByte.length);
-
 						timeByte = getBytes(System.currentTimeMillis());
 						System.arraycopy(timeByte, 0, packetData, idByte.length, timeByte.length);
 
 						byte[] countByte = getBytes(count);
 						System.arraycopy(countByte, 0, packetData, idByte.length + timeByte.length, countByte.length);
-
-						System.arraycopy(sizeByte, 0, packetData, idByte.length + timeByte.length + countByte.length, sizeByte.length);
+						count += audio_data.length; // TODO: count correctly
 
 						System.arraycopy(audio_data, 0, packetData, idByte.length + timeByte.length + countByte.length + sizeByte.length, audio_data.length);
 
-						// TODO: make sure this does all it needs to do!
 						DatagramPacket packet = new DatagramPacket(packetData, packetData.length, InetAddress.getByName(SERVER), audioPort);
 						audioSocket.send(packet);
 					}
 				}
 			}
 		} catch (IOException e) {
+			// TODO: make sure we're handling this okay
 			e.printStackTrace();
 		}
 	}
 
 	public byte[] getBytes(int val)
 	{
-		ByteBuffer int_buffer = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN);
+		ByteBuffer int_buffer = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
 		return int_buffer.putInt(val).array();
 	}
 
 	public byte[] getBytes(long val)
 	{
-		ByteBuffer long_buffer = ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN);
+		ByteBuffer long_buffer = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
 		return long_buffer.putLong(val).array();
 	}
 }
