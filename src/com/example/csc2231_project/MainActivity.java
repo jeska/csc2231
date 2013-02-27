@@ -163,28 +163,27 @@ public class MainActivity extends Activity {
 		} catch (IOException e) {
 			// TODO: Something better here?
 			Log.e(TAG, "IOException in serverConnect");
-		} finally {
-			if(builder.length() == 0) {
-				builder.append("ERROR");
-			}
 		}
 
 		return builder.toString();
 	}
+	
+	private void writeBytes() {
+		idByte = getBytes(id);
+		sizeByte = getBytes(audioBufferSize);
+		System.arraycopy(idByte, 0, packetData, 0, idByte.length);
+		System.arraycopy(sizeByte, 0, packetData, 8 + 8 + 8, sizeByte.length);
+	}
 
 	private void prepare_recording() {
+		currentlyRecording = true;
 		audioRecorder = new AudioRecord(MIC, sampleRate, channel, encoding, audioBufferSize);
 	}
 
 	// TODO: would be nice to pull some of this out into functions, like prepare_recording
 	public void recordButtonClick(View view) {
 		if(recordButton.isChecked()) {
-			idByte = getBytes(id);
-			sizeByte = getBytes(audioBufferSize);
-			System.arraycopy(idByte, 0, packetData, 0, idByte.length);
-			System.arraycopy(sizeByte, 0, packetData, 8 + 8 + 8, sizeByte.length);
-			
-			currentlyRecording = true;
+			writeBytes();			
 			prepare_recording();
 
 			recordThread = new Thread(new Runnable() {
@@ -217,31 +216,42 @@ public class MainActivity extends Activity {
 	}
 
 	public void write_audio() {
-		byte[] audio_data = new byte[audioBufferSize];
+		byte[] audioData = new byte[audioBufferSize];
 		int read = 0;
-		try {
-			if(audioRecorder != null) {
-				while(currentlyRecording) {
-					read = audioRecorder.read(audio_data, 0, audioBufferSize);
+		
+		/* If we want nano time, this can be uncommented */
+		// long start = System.currentTimeMillis() * 1000000; 
+		// long startNano = System.nanoTime();
+		if(audioRecorder != null) {
+			while(currentlyRecording) {
+				read = audioRecorder.read(audioData, 0, audioBufferSize);
 
-					if(read != AudioRecord.ERROR_INVALID_OPERATION) {
-						timeByte = getBytes(System.currentTimeMillis());
-						System.arraycopy(timeByte, 0, packetData, idByte.length, timeByte.length);
+				if(read != AudioRecord.ERROR_INVALID_OPERATION) {
+					/* If we want nano time, this can be uncommented
+					 * Currently should work using milli time */
+					// long now = System.nanoTime();
+					// long newTime = start + (now - startNano);
+					// timeByte = getBytes(newTime);
+					timeByte = getBytes(System.currentTimeMillis());
+					System.arraycopy(timeByte, 0, packetData, idByte.length, timeByte.length);
 
-						byte[] countByte = getBytes(count);
-						System.arraycopy(countByte, 0, packetData, idByte.length + timeByte.length, countByte.length);
-						count += audio_data.length; // TODO: count correctly
+					byte[] countByte = getBytes(count);
+					System.arraycopy(countByte, 0, packetData, idByte.length + timeByte.length, countByte.length);
+					count += audioData.length; // TODO: count correctly
 
-						System.arraycopy(audio_data, 0, packetData, idByte.length + timeByte.length + countByte.length + sizeByte.length, audio_data.length);
-
+					System.arraycopy(audioData, 0, packetData, idByte.length + timeByte.length + countByte.length + sizeByte.length, audioData.length);
+					
+					try {
 						DatagramPacket packet = new DatagramPacket(packetData, packetData.length, InetAddress.getByName(SERVER), audioPort);
 						audioSocket.send(packet);
+					} catch (IOException e) {
+						// This IOException typically only occurs when we've stopped the stream and it's trying to send the last byte
+						// It's okay that we lose it, not terribly crucial
+						// For now, just log it!
+						Log.e(TAG, "IOException trying to send packet in write_audio.");
 					}
 				}
 			}
-		} catch (IOException e) {
-			// TODO: make sure we're handling this okay
-			e.printStackTrace();
 		}
 	}
 
@@ -254,6 +264,6 @@ public class MainActivity extends Activity {
 	public byte[] getBytes(long val)
 	{
 		ByteBuffer long_buffer = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
-		return long_buffer.putLong(val).array();
+   	    return long_buffer.putLong(val).array();
 	}
 }
