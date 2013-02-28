@@ -68,16 +68,24 @@ public class MainActivity extends Activity {
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
+		// Initialize layout
 		super.onCreate(savedInstanceState);        
 		setContentView(R.layout.activity_main);       
 
+		// Connect to the server
 		new ServerConnectTask().execute();
 
+		// Initialize the views we will manipulate later on
 		txt = (TextView) findViewById(R.id.record_text);
 		recordButton = (ToggleButton) findViewById(R.id.record_button);
-		recordButton.setEnabled(false);
+		recordButton.setEnabled(false); // until we connect
 	}
 
+	/* ServerConnectTask
+	 * async connection to the server, gets the JSON and sets various parameters
+	 * on completion, initialize the audio buffer size, packet data, and
+	 * enable the recording button. we did it!
+	 */
 	private class ServerConnectTask extends AsyncTask<Void, Void, Void> {
 		@Override
 		protected Void doInBackground(Void... params) {
@@ -128,13 +136,16 @@ public class MainActivity extends Activity {
 			audioBufferSize = AudioRecord.getMinBufferSize(sampleRate, channel, encoding);
 			packetData = new byte[8 + // idByte.length
 			                      8 + // timeByte.length
-			                      8 + // num samples in
+			                      8 + // num samples in (count)
 			                      4 + // size of audio buffer
 			                      audioBufferSize];
 			recordButton.setEnabled(true);
 		}
 	}
 
+	/* pingServer
+	 * Pings /connect to get the JSON information
+	 */
 	private String pingServer() {
 
 		StringBuilder builder = new StringBuilder();
@@ -168,28 +179,20 @@ public class MainActivity extends Activity {
 		return builder.toString();
 	}
 	
-	private void writeBytes() {
-		idByte = getBytes(id);
-		sizeByte = getBytes(audioBufferSize);
-		System.arraycopy(idByte, 0, packetData, 0, idByte.length);
-		System.arraycopy(sizeByte, 0, packetData, 8 + 8 + 8, sizeByte.length);
-	}
-
-	private void prepare_recording() {
-		currentlyRecording = true;
-		audioRecorder = new AudioRecord(MIC, sampleRate, channel, encoding, audioBufferSize);
-	}
-
 	// TODO: would be nice to pull some of this out into functions, like prepare_recording
+	/* recordButtonClick
+	 * Event handler for pressing the toggle button. If this name ever changes, make
+	 * sure to update res/layout/activity_main.xml
+	 */
 	public void recordButtonClick(View view) {
 		if(recordButton.isChecked()) {
 			writeBytes();			
-			prepare_recording();
+			prepareRecording();
 
 			recordThread = new Thread(new Runnable() {
 				@Override
 				public void run() {
-					write_audio();
+					writeAudio();
 				}    			
 			}, "Recording Thread");
 
@@ -214,8 +217,27 @@ public class MainActivity extends Activity {
 			txt.setText(R.string.record_start);
 		}
 	}
+	
+	/* 
+	 * Functions to reduce the noise in recordButtonClock
+	 */
+	private void writeBytes() {
+		idByte = getBytes(id);
+		sizeByte = getBytes(audioBufferSize);
+		System.arraycopy(idByte, 0, packetData, 0, idByte.length);
+		System.arraycopy(sizeByte, 0, packetData, 8 + 8 + 8, sizeByte.length);
+	}
 
-	public void write_audio() {
+	private void prepareRecording() {
+		currentlyRecording = true;
+		audioRecorder = new AudioRecord(MIC, sampleRate, channel, encoding, audioBufferSize);
+	}
+
+	/* writeAudio
+	 * Gets each audio byte and packages it up with the metadata.
+	 * Then off it goes to the server!
+	 */
+	public void writeAudio() {
 		byte[] audioData = new byte[audioBufferSize];
 		int read = 0;
 		
@@ -255,6 +277,9 @@ public class MainActivity extends Activity {
 		}
 	}
 
+	/* getBytes functions
+	 * Turns an int or long into a byte array for the packet data
+	 */
 	public byte[] getBytes(int val)
 	{
 		ByteBuffer int_buffer = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
