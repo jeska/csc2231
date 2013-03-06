@@ -55,7 +55,7 @@ public class MainActivity extends Activity {
 	private static DatagramSocket audioSocket;
 
 	/* Byte arrays that get sent in the packet */
-	private static long id;
+	private static int id;
 	private static byte[] idByte;
 	private static byte[] timeByte;
 	private static long count = 0;
@@ -91,7 +91,7 @@ public class MainActivity extends Activity {
 		protected Void doInBackground(Void... params) {
 			try {
 				JSONObject connectInfo = new JSONObject(pingServer());
-				id = connectInfo.getLong("Sessid");
+				id = connectInfo.getInt("Sessid");
 				audioPort = connectInfo.getInt("Port");
 				
 				JSONObject audioInfo = connectInfo.getJSONObject("AudioInfo");
@@ -134,7 +134,7 @@ public class MainActivity extends Activity {
 		@Override
 		protected void onPostExecute(Void result) {
 			audioBufferSize = AudioRecord.getMinBufferSize(sampleRate, channel, encoding);
-			packetData = new byte[8 + // idByte.length
+			packetData = new byte[4 + // idByte.length
 			                      8 + // timeByte.length
 			                      8 + // num samples in (count)
 			                      4 + // size of audio buffer
