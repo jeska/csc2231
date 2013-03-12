@@ -57,9 +57,13 @@ public class MainActivity extends Activity {
 	/* Byte arrays that get sent in the packet */
 	private static int id;
 	private static byte[] idByte;
+	private static final int ID_LENGTH = 4;
 	private static byte[] timeByte;
+	private static final int TIME_LENGTH = 8;
 	private static long count = 0;
+	private static final int COUNT_LENGTH = 8;
 	private static byte[] sizeByte;
+	private static final int SIZE_LENGTH = 4;
 	private byte[] packetData;
 
 	/* Android view objects */
@@ -124,7 +128,7 @@ public class MainActivity extends Activity {
 				Log.e(TAG, "error: NumberFormatException");
 				e.printStackTrace();
 			} catch (JSONException e) {
-				Log.e(TAG, "JSON IS AWFULLL");
+				Log.e(TAG, "JSONException in connect to server task");
 				e.printStackTrace();
 			}
 
@@ -134,10 +138,10 @@ public class MainActivity extends Activity {
 		@Override
 		protected void onPostExecute(Void result) {
 			audioBufferSize = AudioRecord.getMinBufferSize(sampleRate, channel, encoding);
-			packetData = new byte[4 + // idByte.length
-			                      8 + // timeByte.length
-			                      8 + // num samples in (count)
-			                      4 + // size of audio buffer
+			packetData = new byte[ID_LENGTH + 
+			                      TIME_LENGTH +
+			                      COUNT_LENGTH +
+			                      SIZE_LENGTH +
 			                      audioBufferSize];
 			recordButton.setEnabled(true);
 		}
@@ -169,11 +173,12 @@ public class MainActivity extends Activity {
 			}
 
 		} catch (ClientProtocolException e) {
-			// TODO: Something better here?
+			// TODO: Something better here
 			Log.e(TAG, "ClientProtocolException in serverConnect");
 		} catch (IOException e) {
 			// TODO: Something better here?
-			Log.e(TAG, "IOException in serverConnect");
+			Log.e(TAG, "IOException in pinging server");
+			e.printStackTrace();
 		}
 
 		return builder.toString();
@@ -207,12 +212,7 @@ public class MainActivity extends Activity {
 
 			txt.setText(R.string.record_stop);
 		} else {
-			currentlyRecording = false;
-			audioSocket.close();
-			audioRecorder.stop();
-			audioRecorder.release();
-			audioRecorder = null;
-			recordThread = null;
+			closeRecording();
 
 			txt.setText(R.string.record_start);
 		}
@@ -225,7 +225,7 @@ public class MainActivity extends Activity {
 		idByte = getBytes(id);
 		sizeByte = getBytes(audioBufferSize);
 		System.arraycopy(idByte, 0, packetData, 0, idByte.length);
-		System.arraycopy(sizeByte, 0, packetData, 8 + 8 + 8, sizeByte.length);
+		System.arraycopy(sizeByte, 0, packetData, ID_LENGTH + TIME_LENGTH + COUNT_LENGTH, SIZE_LENGTH);
 	}
 
 	private void prepareRecording() {
@@ -233,9 +233,18 @@ public class MainActivity extends Activity {
 		audioRecorder = new AudioRecord(MIC, sampleRate, channel, encoding, audioBufferSize);
 	}
 
+	private void closeRecording() {
+		currentlyRecording = false;
+		audioSocket.close();
+		audioRecorder.stop();
+		audioRecorder.release();
+		audioRecorder = null;
+		recordThread = null;
+	}
+
 	/* writeAudio
 	 * Gets each audio byte and packages it up with the metadata.
-	 * Then off it goes to the server!
+	 * Then off it goes to the server
 	 */
 	public void writeAudio() {
 		byte[] audioData = new byte[audioBufferSize];
@@ -254,14 +263,16 @@ public class MainActivity extends Activity {
 					// long now = System.nanoTime();
 					// long newTime = start + (now - startNano);
 					// timeByte = getBytes(newTime);
-					timeByte = getBytes(System.currentTimeMillis());
-					System.arraycopy(timeByte, 0, packetData, idByte.length, timeByte.length);
+					
+					long time = System.currentTimeMillis();
+					timeByte = getBytes(time);
+					System.arraycopy(timeByte, 0, packetData, ID_LENGTH, TIME_LENGTH);
 
 					byte[] countByte = getBytes(count);
-					System.arraycopy(countByte, 0, packetData, idByte.length + timeByte.length, countByte.length);
+					System.arraycopy(countByte, 0, packetData, ID_LENGTH + TIME_LENGTH, COUNT_LENGTH);
 					count += audioData.length; // TODO: count correctly
 
-					System.arraycopy(audioData, 0, packetData, idByte.length + timeByte.length + countByte.length + sizeByte.length, audioData.length);
+					System.arraycopy(audioData, 0, packetData, ID_LENGTH + TIME_LENGTH + COUNT_LENGTH + SIZE_LENGTH, audioData.length);
 					
 					try {
 						DatagramPacket packet = new DatagramPacket(packetData, packetData.length, InetAddress.getByName(SERVER), audioPort);
